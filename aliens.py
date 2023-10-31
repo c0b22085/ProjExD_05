@@ -42,6 +42,7 @@ ALIEN_RELOAD = 12  # frames between new aliens
 SCREENRECT = pg.Rect(0, 0, 640, 480)
 SCORE = 0
 Pachi = False
+SUPERMODE = False #mode切り替え用変数（ON：True）
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
@@ -267,10 +268,10 @@ def main(winstyle=0):
     winstyle = 0  # |FULLSCREEN
     bestdepth = pg.display.mode_ok(SCREENRECT.size, winstyle, 32)
     screen = pg.display.set_mode(SCREENRECT.size, winstyle, bestdepth)
-
+    
     # Load images, assign to sprite classes
     # (do this before the classes are used, after screen setup)
-    img = load_image("player1.gif")
+    img = load_image("player1.gif") 
     Player.images = [img, pg.transform.flip(img, 1, 0)]
     img = load_image("explosion1.gif")
     Explosion.images = [img, pg.transform.flip(img, 1, 1)]
@@ -382,6 +383,14 @@ def main(winstyle=0):
         elif not int(random.random() * ALIEN_ODDS):
             Alien()
             alienreload = ALIEN_RELOAD
+        #SUPERMODE 切り替え
+        global SUPERMODE
+        changemode = keystate[pg.K_TAB]
+        if changemode:
+            if SUPERMODE ==False:
+                SUPERMODE=True
+            else:
+                SUPERMODE=False
 
         global Pachi
         #敵追加
@@ -418,6 +427,8 @@ def main(winstyle=0):
         for alien in pg.sprite.groupcollide(aliens, shots, 1, 1).keys():
             if pg.mixer:
                 boom_sound.play()
+            if SUPERMODE: #SUPERMODEに入っていたら
+                Shot(player.gunpos()) #playerがshotする
             Explosion(alien)
             SCORE = SCORE + 1
 
@@ -440,6 +451,7 @@ def main(winstyle=0):
         # draw the scene
         dirty = all.draw(screen)
         pg.display.update(dirty)
+
 
         # cap the framerate at 40fps. Also called 40HZ or 40 times per second.
         clock.tick(40)
