@@ -29,6 +29,7 @@ import os
 # import basic pygame modules
 import pygame as pg
 
+
 # see if we can load more than standard BMP
 if not pg.image.get_extended():
     raise SystemExit("Sorry, extended image module required")
@@ -228,6 +229,12 @@ class Score(pg.sprite.Sprite):
             self.image = self.font.render(msg, 0, self.color)
 
 
+class item(pg.sprite.Sprite):
+    def __init__(self):
+        self.image = self.image(0)
+
+
+
 def main(winstyle=0):
     # Initialize pygame
     if pg.get_sdl_version()[0] == 2:
@@ -252,6 +259,7 @@ def main(winstyle=0):
     Alien.images = [load_image(im) for im in ("alien1.gif", "alien2.gif", "alien3.gif")]
     Bomb.images = [load_image("bomb.gif")]
     Shot.images = [load_image("shot.gif")]
+    item.images = [load_image("item.gif")]
 
     # decorate the game window
     icon = pg.transform.scale(Alien.images[0], (32, 32))
@@ -281,6 +289,7 @@ def main(winstyle=0):
     bombs = pg.sprite.Group()
     all = pg.sprite.RenderUpdates()
     lastalien = pg.sprite.GroupSingle()
+    
 
     # assign default groups to each sprite class
     Player.containers = all
@@ -289,6 +298,7 @@ def main(winstyle=0):
     Bomb.containers = bombs, all
     Explosion.containers = all
     Score.containers = all
+    item.containers = all
 
     # Create Some Starting Values
     global score
@@ -306,7 +316,7 @@ def main(winstyle=0):
     while player.alive():
 
         # get input
-        for event in pg.event.get():
+        for event in pg.event.get():  
             if event.type == pg.QUIT:
                 return
             if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
@@ -369,6 +379,12 @@ def main(winstyle=0):
             player.kill()
 
         # See if shots hit the aliens.
+        for alien in pg.sprite.groupcollide(aliens, shots, 1, 1).keys():
+            if pg.mixer:
+                boom_sound.play()
+            Explosion(alien)
+            SCORE = SCORE + 1
+        #追加
         for alien in pg.sprite.groupcollide(aliens, shots, 1, 1).keys():
             if pg.mixer:
                 boom_sound.play()
