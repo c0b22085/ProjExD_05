@@ -111,7 +111,7 @@ class Player(pg.sprite.Sprite):
 class Alien(pg.sprite.Sprite):
     """An alien space ship. That slowly moves down the screen."""
 
-    speed = 13
+    speed = 3
     animcycle = 12
     images = []
 
@@ -301,6 +301,9 @@ def main(winstyle=0):
     Alien()  # note, this 'lives' because it goes into a sprite group
     if pg.font:
         all.add(Score())
+    SCORE = 0
+    Alien.speed = 3
+    score_multiple_of_5 = 0  #スコアが５の倍数かどうかチェック
 
     # Run our main loop whilst the player is alive.
     while player.alive():
@@ -389,6 +392,11 @@ def main(winstyle=0):
 
         # cap the framerate at 40fps. Also called 40HZ or 40 times per second.
         clock.tick(40)
+
+        #スコアが5の倍数かどうかを確認し、Alianの速度を更新
+        if SCORE % 5 == 0 and SCORE != score_multiple_of_5:
+            Alien.speed += 2
+            score_multiple_of_5 = SCORE
 
     if pg.mixer:
         pg.mixer.music.fadeout(1000)
