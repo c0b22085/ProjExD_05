@@ -36,12 +36,14 @@ if not pg.image.get_extended():
 
 
 # game constants
-MAX_SHOTS = 2  # most player bullets onscreen
+MAX_SHOTS = 4  # most player bullets onscreen
 ALIEN_ODDS = 22  # chances a new alien appears
 BOMB_ODDS = 60  # chances a new bomb will drop
 ALIEN_RELOAD = 12  # frames between new aliens
 SCREENRECT = pg.Rect(0, 0, 640, 480)
 SCORE = 0
+Pachi = False
+SUPERMODE = False #mode切り替え用変数（ON：True）
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
@@ -121,7 +123,7 @@ class Player(pg.sprite.Sprite):
 class Alien(pg.sprite.Sprite):
     """An alien space ship. That slowly moves down the screen."""
 
-    speed = 13
+    speed = 3
     animcycle = 12
     images = []
 
@@ -143,6 +145,29 @@ class Alien(pg.sprite.Sprite):
         self.frame = self.frame + 1
         self.image = self.images[self.frame // self.animcycle % 3]
 
+
+class Add_Enemy(pg.sprite.Sprite):
+    """An alien space ship. That slowly moves down the screen."""
+
+    speed = 150
+    animcycle = 10
+
+    def __init__(self):
+        pg.sprite.Sprite.__init__(self, self.containers)
+        self.image = pg.transform.scale(self.image, (30, 30))
+        self.rect = self.image.get_rect()
+        self.facing = random.choice((-1, 1)) * Add_Enemy.speed
+        self.frame = 0
+        if self.facing < 0:
+            self.rect.right = SCREENRECT.right
+
+    def update(self):
+        self.rect.move_ip(self.facing, 0)
+        if not SCREENRECT.contains(self.rect):
+            self.facing = -self.facing
+            self.rect.top = self.rect.bottom + 1
+            self.rect = self.rect.clamp(SCREENRECT)
+        
 
 class Explosion(pg.sprite.Sprite):
     """An explosion. Hopefully the Alien and not the player!"""
@@ -269,6 +294,7 @@ class Score(pg.sprite.Sprite):
 
 
 def main(winstyle=0):
+
     # Initialize pygame
     if pg.get_sdl_version()[0] == 2:
         pg.mixer.pre_init(44100, 32, 2, 1024)
@@ -282,14 +308,15 @@ def main(winstyle=0):
     winstyle = 0  # |FULLSCREEN
     bestdepth = pg.display.mode_ok(SCREENRECT.size, winstyle, 32)
     screen = pg.display.set_mode(SCREENRECT.size, winstyle, bestdepth)
-
+    
     # Load images, assign to sprite classes
     # (do this before the classes are used, after screen setup)
-    img = load_image("player1.gif")
+    img = load_image("player1.gif") 
     Player.images = [img, pg.transform.flip(img, 1, 0)]
     img = load_image("explosion1.gif")
     Explosion.images = [img, pg.transform.flip(img, 1, 1)]
     Alien.images = [load_image(im) for im in ("alien1.gif", "alien2.gif", "alien3.gif")]
+    Add_Enemy.image = load_image("chimp.png")
     Bomb.images = [load_image("bomb.gif")]
     Item.images = [load_image_roto("item.gif") ]
     Shot.images = [load_image("shot.gif")]
@@ -319,6 +346,7 @@ def main(winstyle=0):
 
     # Initialize Game Groups
     aliens = pg.sprite.Group()
+    addenemys = pg.sprite.Group()
     shots = pg.sprite.Group()
     bombs = pg.sprite.Group()
     items = pg.sprite.Group()
@@ -329,6 +357,7 @@ def main(winstyle=0):
     # assign default groups to each sprite class
     Player.containers = all
     Alien.containers = aliens, all, lastalien
+    Add_Enemy.containers = addenemys, all, lastalien
     Shot.containers = shots, all
     Bomb.containers = bombs, all
     Item.containers = items ,all 
@@ -348,6 +377,9 @@ def main(winstyle=0):
     Alien()  # note, this 'lives' because it goes into a sprite group
     if pg.font:
         all.add(Score())
+    SCORE = 0
+    Alien.speed = 3
+    score_multiple_of_5 = 0  #スコアが５の倍数かどうかチェック
 
     # Run our main loop whilst the player is alive.
     while player.alive():
@@ -401,6 +433,23 @@ def main(winstyle=0):
         elif not int(random.random() * ALIEN_ODDS):
             Alien()
             alienreload = ALIEN_RELOAD
+        #SUPERMODE 切り替え
+        global SUPERMODE
+        changemode = keystate[pg.K_TAB]
+        if changemode:
+            if SUPERMODE ==False:
+                SUPERMODE=True
+            else:
+                SUPERMODE=False
+
+        global Pachi
+        #敵追加
+        if SCORE > 0:
+            if  SCORE % 20 == 0 and Pachi == False:
+                Add_Enemy()
+                Pachi = True
+            if SCORE % 20 != 0:
+                Pachi = False
 
         # Drop bombs
         if lastalien and not int(random.random() * BOMB_ODDS):
@@ -417,10 +466,21 @@ def main(winstyle=0):
             SCORE = SCORE + 1
             player.kill()
 
+        # Detect collisions between aliens and players.
+        for addenemy in pg.sprite.spritecollide(player, addenemys, 1):
+            if pg.mixer:
+                boom_sound.play()
+            Explosion(alien)
+            Explosion(player)
+            SCORE = SCORE + 1
+            player.kill()
+
         # See if shots hit the aliens.
         for alien in pg.sprite.groupcollide(aliens, shots, 1, 1).keys():
             if pg.mixer:
                 boom_sound.play()
+            if SUPERMODE: #SUPERMODEに入っていたら
+                Shot(player.gunpos()) #playerがshotする
             Explosion(alien)
             SCORE = SCORE + 1
         #追加
@@ -429,6 +489,14 @@ def main(winstyle=0):
                 boom_sound.play()
             Explosion(alien)
             SCORE = SCORE + 1
+
+        # See if shots hit the addenemy(ぱっちぃ).
+        for addenemy in pg.sprite.groupcollide(addenemys, shots, 1, 1).keys():
+            if pg.mixer:
+                boom_sound.play()
+                Explosion(addenemy)
+                SCORE = SCORE + 10
+            
 
         # See if alien boms hit the player.
         for bomb in pg.sprite.spritecollide(player, bombs, 1):
@@ -451,8 +519,14 @@ def main(winstyle=0):
         dirty = all.draw(screen)
         pg.display.update(dirty)
 
+
         # cap the framerate at 40fps. Also called 40HZ or 40 times per second.
         clock.tick(40)
+
+        #スコアが5の倍数かどうかを確認し、Alianの速度を更新
+        if SCORE % 5 == 0 and SCORE != score_multiple_of_5:
+            Alien.speed += 2
+            score_multiple_of_5 = SCORE
 
     if pg.mixer:
         pg.mixer.music.fadeout(1000)
