@@ -233,7 +233,7 @@ class Item(pg.sprite.Sprite):
     def update(self):
         """called every time around the game loop.
 
-        Every frame we move the sprite 'rect' down.
+        Every frame we move the sprite 'rect' down
         When it reaches the bottom we:
 
         - make an explosion.
